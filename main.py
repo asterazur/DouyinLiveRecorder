@@ -475,6 +475,7 @@ def check_subprocess(record_name: str, record_url: str, ffmpeg_command: list, sa
         "recording_started",
         url=record_url,
         backend="ffmpeg",
+        backend_pid=process.pid,
         output_path=save_file_path,
         format=save_type
     )
@@ -505,6 +506,7 @@ def check_subprocess(record_name: str, record_url: str, ffmpeg_command: list, sa
                 "recording_stopped",
                 url=record_url,
                 backend="ffmpeg",
+                backend_pid=process.pid,
                 output_path=save_file_path,
                 format=save_type,
                 reason=stop_reason
@@ -517,6 +519,7 @@ def check_subprocess(record_name: str, record_url: str, ffmpeg_command: list, sa
         "recording_stopped",
         url=record_url,
         backend="ffmpeg",
+        backend_pid=process.pid,
         output_path=save_file_path,
         format=save_type,
         reason="completed" if return_code == 0 else "backend_error",
@@ -1892,7 +1895,8 @@ except Exception as err:
 
 emit_runtime_event(
     "runtime_started",
-    version=version
+    version=version,
+    runtime_pid=os.getpid()
 )
 
 while True:
