@@ -58,6 +58,7 @@ Emitted after runtime initialization has completed sufficiently for the main rec
 Additional fields / 附加字段:
 
 - `version`
+- `runtime_pid` — DouyinLiveRecorder's operating-system process ID / DouyinLiveRecorder 主进程的操作系统进程 ID
 
 ---
 
@@ -132,6 +133,7 @@ Additional fields / 附加字段:
 
 - `url` — configured room URL / 已配置的直播间 URL
 - `backend` — currently `ffmpeg` or `direct_flv` / 当前为 `ffmpeg` 或 `direct_flv`
+- `backend_pid` — FFmpeg subprocess PID (only for `ffmpeg`) / FFmpeg 子进程的进程 ID（仅适用于 `ffmpeg`）
 - `output_path`
 - `format`
 
@@ -151,6 +153,7 @@ Additional fields / 附加字段:
 
 - `url`
 - `backend`
+- `backend_pid` — FFmpeg subprocess PID (only for `ffmpeg`) / FFmpeg 子进程的进程 ID（仅适用于 `ffmpeg`）
 - `output_path`
 - `format`
 - `reason`
