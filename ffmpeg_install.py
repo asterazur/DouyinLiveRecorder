@@ -19,7 +19,6 @@ from src.logger import logger
 
 current_platform = platform.system()
 execute_dir = os.path.split(os.path.realpath(sys.argv[0]))[0]
-current_env_path = os.environ.get('PATH')
 ffmpeg_path = os.path.join(execute_dir, 'ffmpeg')
 
 
@@ -84,7 +83,6 @@ def install_ffmpeg_windows():
                             f.write(data)
 
             unzip_file(zip_file_path, execute_dir)
-            os.environ['PATH'] = ffmpeg_path + os.pathsep + current_env_path
             # Never confuse an unrelated system-wide FFmpeg with our download.
             bundled_ffmpeg = os.path.join(ffmpeg_path, 'ffmpeg.exe')
             if not os.path.isfile(bundled_ffmpeg):
@@ -209,7 +207,7 @@ def ensure_ffmpeg_installed(func):
 
 
 def check_ffmpeg_installed() -> bool:
-    # Windows DLR_UI builds must not accept an unrelated system FFmpeg.
+    # Windows installations must not use an unrelated system FFmpeg.
     executable = (
         os.path.join(ffmpeg_path, 'ffmpeg.exe')
         if current_platform == "Windows" else 'ffmpeg'
@@ -222,7 +220,7 @@ def check_ffmpeg_installed() -> bool:
     except FileNotFoundError:
         pass
     except OSError as e:
-        print(f"OSError occurred: {e}. ffmpeg may not be installed correctly or is not available in the system PATH.")
+        print(f"OSError occurred: {e}. the expected FFmpeg executable may be missing or unusable.")
         print("Please delete the ffmpeg and try to download and install again.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")

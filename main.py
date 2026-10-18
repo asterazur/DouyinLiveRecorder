@@ -35,7 +35,7 @@ from msg_push import (
     dingtalk, xizhi, tg_bot, send_email, bark, ntfy, pushplus
 )
 from ffmpeg_install import (
-    check_ffmpeg, ffmpeg_path, current_env_path
+    check_ffmpeg, ffmpeg_path
 )
 from runtime_events import emit_runtime_event
 
@@ -83,7 +83,6 @@ bundled_ffmpeg_executable = (
 )
 clear_command = "cls" if os_type == 'nt' else "clear"
 color_obj = utils.Color()
-os.environ['PATH'] = ffmpeg_path + os.pathsep + current_env_path
 
 
 def signal_handler(_signal, _frame):
