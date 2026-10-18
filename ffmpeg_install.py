@@ -19,7 +19,6 @@ from src.logger import logger
 
 current_platform = platform.system()
 execute_dir = os.path.split(os.path.realpath(sys.argv[0]))[0]
-current_env_path = os.environ.get('PATH')
 ffmpeg_path = os.path.join(execute_dir, 'ffmpeg')
 
 
@@ -84,13 +83,17 @@ def install_ffmpeg_windows():
                             f.write(data)
 
             unzip_file(zip_file_path, execute_dir)
-            os.environ['PATH'] = ffmpeg_path + os.pathsep + current_env_path
-            result = subprocess.run(["ffmpeg", "-version"], capture_output=True)
+            # Never confuse an unrelated system-wide FFmpeg with our download.
+            bundled_ffmpeg = os.path.join(ffmpeg_path, 'ffmpeg.exe')
+            if not os.path.isfile(bundled_ffmpeg):
+                logger.error(f"Downloaded FFmpeg not found at: {bundled_ffmpeg}")
+                return False
+            result = subprocess.run([bundled_ffmpeg, "-version"], capture_output=True)
             if result.returncode == 0:
-                logger.debug('ffmpeg installation was successful')
-            else:
-                logger.error('ffmpeg installation failed. Please manually install ffmpeg by yourself')
-            return True
+                logger.debug('bundled ffmpeg installation was successful')
+                return True
+            logger.error('bundled ffmpeg installation failed its version check')
+            return False
         else:
             logger.error("Please manually install ffmpeg by yourself")
     except Exception as e:
@@ -173,8 +176,12 @@ def install_ffmpeg() -> bool:
 
 def ensure_ffmpeg_installed(func):
     def wrapper(*args, **kwargs):
+        executable = (
+            os.path.join(ffmpeg_path, 'ffmpeg.exe')
+            if current_platform == "Windows" else 'ffmpeg'
+        )
         try:
-            result = subprocess.run(['ffmpeg', '-version'], capture_output=True)
+            result = subprocess.run([executable, '-version'], capture_output=True)
             version = result.stdout.strip()
             if result.returncode == 0 and version:
                 return func(*args, **kwargs)
@@ -200,15 +207,20 @@ def ensure_ffmpeg_installed(func):
 
 
 def check_ffmpeg_installed() -> bool:
+    # Windows installations must not use an unrelated system FFmpeg.
+    executable = (
+        os.path.join(ffmpeg_path, 'ffmpeg.exe')
+        if current_platform == "Windows" else 'ffmpeg'
+    )
     try:
-        result = subprocess.run(['ffmpeg', '-version'], capture_output=True)
+        result = subprocess.run([executable, '-version'], capture_output=True)
         version = result.stdout.strip()
         if result.returncode == 0 and version:
             return True
     except FileNotFoundError:
         pass
     except OSError as e:
-        print(f"OSError occurred: {e}. ffmpeg may not be installed correctly or is not available in the system PATH.")
+        print(f"OSError occurred: {e}. the expected FFmpeg executable may be missing or unusable.")
         print("Please delete the ffmpeg and try to download and install again.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")

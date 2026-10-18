@@ -12,6 +12,16 @@
 
 </div>
 
+## FFmpeg identification / FFmpeg 进程识别
+
+For external process supervision, selecting a deterministic FFmpeg executable path is important. A process ID alone does not prove which recorder installation owns a child process. On Windows, the proposed approach uses the recorder's own `ffmpeg/ffmpeg.exe`, including first-run download when missing, and avoids modifying the current process's `PATH` for FFmpeg discovery.
+
+为了安全地管理外部进程，应以明确路径选择 FFmpeg。仅凭进程 ID 无法证明子进程属于哪个录制器安装。在 Windows 上，建议使用录制器自身的 `ffmpeg/ffmpeg.exe`，首次缺失时保留下载安装功能，并避免为查找 FFmpeg 修改当前进程的 `PATH`。
+
+The rationale, backward-compatibility considerations, and verification plan are described in [FFmpeg process identification and ownership](FFMPEG_PROCESS_OWNERSHIP.md).
+
+理由、向后兼容考虑和验证计划见 [FFmpeg 进程识别与归属说明](FFMPEG_PROCESS_OWNERSHIP.md)。
+
 ## 😺已支持平台
 
 - [x] 抖音
