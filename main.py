@@ -95,6 +95,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 def display_info() -> None:
     global start_display_time
     time.sleep(5)
+    consecutive_display_errors = 0
     while True:
         try:
             sys.stdout.flush()
@@ -135,8 +136,13 @@ def display_info() -> None:
                 # print('\n本软件已运行：'+str(now_time - start_display_time).split('.')[0])
                 print("x" * 60)
                 start_display_time = now_time
+            consecutive_display_errors = 0
         except Exception as e:
+            consecutive_display_errors += 1
             logger.error(f"错误信息: {e} 发生错误的行数: {e.__traceback__.tb_lineno}")
+            # A broken stdout must not cause a tight error/logging loop.
+            # Back off up to 60 seconds; reset after a successful cycle.
+            time.sleep(min(60, 2 ** min(consecutive_display_errors - 1, 6)))
 
 
 def update_file(file_path: str, old_str: str, new_str: str, start_str: str = None) -> str | None:
