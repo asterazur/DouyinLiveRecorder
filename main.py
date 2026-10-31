@@ -114,20 +114,6 @@ def signal_handler(signum, _frame):
     )
 
 
-def console_shutdown_listener():
-    """Typing q and Enter requests the same shutdown as an external UI."""
-    while not _shutdown_requested.is_set():
-        try:
-            command = sys.stdin.readline()
-        except (OSError, ValueError):
-            return
-        if not command:
-            return
-        if command.strip().lower() == "q":
-            request_graceful_shutdown("terminal_q")
-            return
-
-
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
 
@@ -1991,9 +1977,9 @@ while not _shutdown_requested.is_set():
             with open(url_config_file, 'r', encoding=text_encoding) as file:
                 ini_URL_content = file.read().strip()
 
-        # The initial interactive URL prompt is preserved for terminal users.
-        # Later loops must not compete with the console shutdown listener
-        # for stdin; a cleared URL list simply means no rooms are enabled.
+        # Preserve the initial URL prompt for interactive terminal users.
+        # In a hidden/noninteractive session, an empty list means no rooms
+        # are enabled and must not block waiting for stdin.
         if (
             not ini_URL_content.strip()
             and first_run
@@ -2363,12 +2349,6 @@ while not _shutdown_requested.is_set():
         t2 = threading.Thread(target=adjust_max_request, args=(), daemon=True)
         t2.start()
         first_run = False
-        if sys.stdin is not None and sys.stdin.isatty():
-            threading.Thread(
-                target=console_shutdown_listener,
-                name="DLRConsoleShutdown",
-                daemon=True
-            ).start()
 
     time.sleep(3)
 
