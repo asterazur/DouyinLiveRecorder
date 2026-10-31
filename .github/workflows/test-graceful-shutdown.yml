@@ -1,0 +1,24 @@
+name: Test graceful shutdown protocol
+
+on:
+  push:
+    branches:
+      - DLR_4.0.7_e002
+  pull_request:
+
+jobs:
+  test-local-control:
+    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run isolated control protocol tests
+        run: python -m unittest discover -s tests -p test_shutdown_control.py -v
