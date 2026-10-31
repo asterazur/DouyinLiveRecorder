@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-# Version 2 adds recorder/FFmpeg PIDs for external integrations.
+# Version 2.1 adds runtime_stopping/runtime_stopped and shutdown reasons.
 # Increment when the runtime-event producer contract changes.
-RUNTIME_EVENTS_VERSION = "2.0"
+RUNTIME_EVENTS_VERSION = "2.1"
 
 _event_lock = threading.Lock()
 
