@@ -77,6 +77,14 @@ class ShutdownControlTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             request_shutdown(self.temporary.name, os.getpid())
 
+    def test_terminal_uses_existing_signal_shortcut_without_extra_stdin_reader(self):
+        """Do not race the initial interactive URL prompt for stdin."""
+        project = Path(__file__).resolve().parents[1]
+        main_source = (project / "main.py").read_text(encoding="utf-8-sig")
+        self.assertIn("signal.signal(signal.SIGINT, signal_handler)", main_source)
+        self.assertNotIn("console_shutdown_listener", main_source)
+        self.assertNotIn("terminal_q", main_source)
+
     def test_python_sources_parse(self):
         project = Path(__file__).resolve().parents[1]
         for filename in ("main.py", "shutdown_control.py", "runtime_events.py"):
