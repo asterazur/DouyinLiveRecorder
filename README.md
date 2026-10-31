@@ -1,5 +1,7 @@
 ![video_spider](https://socialify.git.ci/ihmily/DouyinLiveRecorder/image?font=Inter&forks=1&language=1&owner=1&pattern=Circuit%20Board&stargazers=1&theme=Light)
 
+> **e002 development branch:** Experimental per-instance graceful shutdown (terminal `q`, `--stop --pid`, localhost API). See [graceful shutdown protocol](docs/graceful-shutdown.md). This feature is not part of upstream v4.0.7.
+
 ## 💡简介
 [![Python Version](https://img.shields.io/badge/python-3.11.6-blue.svg)](https://www.python.org/downloads/release/python-3116/)
 [![Supported Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-blue.svg)](https://github.com/ihmily/DouyinLiveRecorder)
