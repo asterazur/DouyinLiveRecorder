@@ -6,10 +6,10 @@ performs process termination.
 
 ## Terminal
 
-For a recorder already running in a terminal, enter `q` followed by Enter.
-`Ctrl+C` and `SIGTERM` also request the same orderly shutdown (where
-supported by the OS). During first-run interactive URL entry, complete the
-URL prompt first.
+For a recorder running in an interactive terminal, press `Ctrl+C`.
+`SIGINT` (from Ctrl+C) and `SIGTERM` request the same orderly shutdown
+(where supported by the OS). No other keyboard reader is installed: ordinary
+terminal input remains available for DLR's initial room-URL prompt.
 
 ## Other applications and scripts
 
