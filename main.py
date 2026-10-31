@@ -11,6 +11,15 @@ Function: Record live stream video.
 import asyncio
 import os
 import sys
+
+# Handle the external stop command before importing heavy recorder dependencies.
+from shutdown_control import ShutdownControlServer, shutdown_cli
+
+if "--stop" in sys.argv[1:]:
+    sys.exit(shutdown_cli(
+        sys.argv[1:], os.path.dirname(os.path.abspath(sys.argv[0]))
+    ))
+
 import builtins
 import subprocess
 import signal
@@ -60,6 +69,9 @@ text_no_repeat_url = []
 create_var = locals()
 first_start = True
 exit_recording = False
+_shutdown_requested = threading.Event()
+_shutdown_lock = threading.Lock()
+_shutdown_reason = None
 need_update_line_list = []
 first_run = True
 not_record_list = []
@@ -85,11 +97,39 @@ clear_command = "cls" if os_type == 'nt' else "clear"
 color_obj = utils.Color()
 
 
-def signal_handler(_signal, _frame):
-    sys.exit(0)
+def request_graceful_shutdown(reason):
+    """Notify worker threads, then let the main thread coordinate shutdown."""
+    global exit_recording, _shutdown_reason
+    with _shutdown_lock:
+        if _shutdown_requested.is_set():
+            return
+        _shutdown_reason = reason
+        exit_recording = True
+        _shutdown_requested.set()
+
+
+def signal_handler(signum, _frame):
+    request_graceful_shutdown(
+        "signal_sigint" if signum == signal.SIGINT else "signal_sigterm"
+    )
+
+
+def console_shutdown_listener():
+    """Typing q and Enter requests the same shutdown as an external UI."""
+    while not _shutdown_requested.is_set():
+        try:
+            command = sys.stdin.readline()
+        except (OSError, ValueError):
+            return
+        if not command:
+            return
+        if command.strip().lower() == "q":
+            request_graceful_shutdown("terminal_q")
+            return
 
 
 signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def display_info() -> None:
@@ -434,7 +474,10 @@ def direct_download_stream(source_url: str, save_path: str, record_name: str, li
 
                 for chunk in response.iter_bytes(chunk_size):
                     if live_url in url_comments or exit_recording:
-                        stop_reason = "disabled" if live_url in url_comments else "disk_space_limit"
+                        stop_reason = (
+                            "shutdown" if _shutdown_requested.is_set()
+                            else ("disabled" if live_url in url_comments else "disk_space_limit")
+                        )
                         color_obj.print_colored(f"[{record_name}]录制时已被注释或请求停止,下载中断", color_obj.YELLOW)
                         clear_record_info(record_name, live_url)
                         emit_runtime_event(
@@ -501,7 +544,10 @@ def check_subprocess(record_name: str, record_url: str, ffmpeg_command: list, sa
 
     while process.poll() is None:
         if record_url in url_comments or exit_recording:
-            stop_reason = "disabled" if record_url in url_comments else "disk_space_limit"
+            stop_reason = (
+                "shutdown" if _shutdown_requested.is_set()
+                else ("disabled" if record_url in url_comments else "disk_space_limit")
+            )
             color_obj.print_colored(f"[{record_name}]录制时已被注释,本条线程将会退出", color_obj.YELLOW)
             clear_record_info(record_name, record_url)
             # process.terminate()
@@ -633,7 +679,7 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
 
     monitoring_started_emitted = False
 
-    while True:
+    while not _shutdown_requested.is_set():
         try:
             record_finished = False
             run_once = False
@@ -670,7 +716,7 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
 
             # print(f'\r代理地址:{proxy_address}')
             # print(f'\r全局代理:{global_proxy}')
-            while True:
+            while not _shutdown_requested.is_set():
                 try:
                     port_info = []
                     if record_url.find("douyin.com/") > -1:
@@ -1916,13 +1962,31 @@ except URLError:
 except Exception as err:
     print("An unexpected error occurred:", err)
 
+# The local listener is instance-scoped: it accepts authenticated requests
+# only for this recorder's PID and this installation's control descriptor.
+_shutdown_control = ShutdownControlServer(
+    script_path, request_graceful_shutdown
+)
+try:
+    _shutdown_control.start()
+except (OSError, RuntimeError) as error:
+    logger.error(f"Local graceful shutdown control unavailable: {error}")
+    _shutdown_control = None
+
+if sys.stdin is not None and sys.stdin.isatty():
+    threading.Thread(
+        target=console_shutdown_listener,
+        name="DLRConsoleShutdown",
+        daemon=True
+    ).start()
+
 emit_runtime_event(
     "runtime_started",
     version=version,
     runtime_pid=os.getpid()
 )
 
-while True:
+while not _shutdown_requested.is_set():
 
     try:
         if not os.path.isfile(config_file):
@@ -2267,6 +2331,8 @@ while True:
 
         if len(text_no_repeat_url) > 0:
             for url_tuple in text_no_repeat_url:
+                if _shutdown_requested.is_set():
+                    break
                 monitoring = len(running_list)
 
                 if url_tuple[1] in not_record_list:
@@ -2276,7 +2342,10 @@ while True:
                     print(f"\r{'新增' if not first_start else '传入'}地址: {url_tuple[1]}")
                     monitoring += 1
                     args = [url_tuple, monitoring]
-                    create_var[f'thread_{monitoring}'] = threading.Thread(target=start_record, args=args)
+                    create_var[f'thread_{monitoring}'] = threading.Thread(
+                        target=start_record, args=args,
+                        name=f"DLRRoomMonitor-{monitoring}"
+                    )
                     create_var[f'thread_{monitoring}'].daemon = True
                     create_var[f'thread_{monitoring}'].start()
                     running_list.append(url_tuple[1])
@@ -2295,3 +2364,45 @@ while True:
         first_run = False
 
     time.sleep(3)
+
+# Graceful exit: workers are allowed to close their own FFmpeg backends
+# (FFmpeg receives 'q' in check_subprocess). Never force-kill them here.
+exit_recording = True
+emit_runtime_event(
+    "runtime_stopping",
+    version=version,
+    runtime_pid=os.getpid(),
+    reason=_shutdown_reason
+)
+
+last_progress_report = time.monotonic()
+while True:
+    active_workers = [
+        worker for worker in threading.enumerate()
+        if worker is not threading.current_thread()
+        and (worker.name.startswith("DLRRoomMonitor-") or not worker.daemon)
+    ]
+    if not active_workers:
+        break
+    for worker in active_workers:
+        worker.join(timeout=1.0)
+    if time.monotonic() - last_progress_report >= 15:
+        logger.info(
+            "Graceful shutdown still waiting for %d recording/conversion worker(s).",
+            len(active_workers)
+        )
+        last_progress_report = time.monotonic()
+
+for monitored_url in list(running_list):
+    clear_monitor_info(monitored_url)
+
+if _shutdown_control is not None:
+    _shutdown_control.close()
+
+emit_runtime_event(
+    "runtime_stopped",
+    version=version,
+    runtime_pid=os.getpid(),
+    reason=_shutdown_reason,
+    status="completed"
+)
