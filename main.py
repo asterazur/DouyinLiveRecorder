@@ -2395,8 +2395,7 @@ while True:
         worker.join(timeout=1.0)
     if time.monotonic() - last_progress_report >= 15:
         logger.info(
-            "Graceful shutdown still waiting for %d recording/conversion worker(s).",
-            len(active_workers)
+            f"Graceful shutdown still waiting for {len(active_workers)} recording/conversion worker(s)."
         )
         last_progress_report = time.monotonic()
 
