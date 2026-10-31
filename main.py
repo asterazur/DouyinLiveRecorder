@@ -1973,13 +1973,6 @@ except (OSError, RuntimeError) as error:
     logger.error(f"Local graceful shutdown control unavailable: {error}")
     _shutdown_control = None
 
-if sys.stdin is not None and sys.stdin.isatty():
-    threading.Thread(
-        target=console_shutdown_listener,
-        name="DLRConsoleShutdown",
-        daemon=True
-    ).start()
-
 emit_runtime_event(
     "runtime_started",
     version=version,
@@ -1998,7 +1991,15 @@ while not _shutdown_requested.is_set():
             with open(url_config_file, 'r', encoding=text_encoding) as file:
                 ini_URL_content = file.read().strip()
 
-        if not ini_URL_content.strip():
+        # The initial interactive URL prompt is preserved for terminal users.
+        # Later loops must not compete with the console shutdown listener
+        # for stdin; a cleared URL list simply means no rooms are enabled.
+        if (
+            not ini_URL_content.strip()
+            and first_run
+            and sys.stdin is not None
+            and sys.stdin.isatty()
+        ):
             input_url = input('请输入要录制的主播直播间网址（尽量使用PC网页端的直播间地址）:\n')
             with open(url_config_file, 'w', encoding=text_encoding) as file:
                 file.write(input_url)
@@ -2362,6 +2363,12 @@ while not _shutdown_requested.is_set():
         t2 = threading.Thread(target=adjust_max_request, args=(), daemon=True)
         t2.start()
         first_run = False
+        if sys.stdin is not None and sys.stdin.isatty():
+            threading.Thread(
+                target=console_shutdown_listener,
+                name="DLRConsoleShutdown",
+                daemon=True
+            ).start()
 
     time.sleep(3)
 
