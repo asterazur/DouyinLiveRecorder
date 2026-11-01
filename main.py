@@ -575,9 +575,9 @@ def check_subprocess(record_name: str, record_url: str, ffmpeg_command: list, sa
                 prefix = os.path.basename(save_file_path).rsplit('_', maxsplit=1)[0]
                 for path in file_paths:
                     if prefix in path:
-                        threading.Thread(target=converts_mp4, args=(path, delete_origin_file)).start()
+                        threading.Thread(target=converts_mp4, args=(path, delete_origin_file), daemon=False).start()
             else:
-                threading.Thread(target=converts_mp4, args=(save_file_path, delete_origin_file)).start()
+                threading.Thread(target=converts_mp4, args=(save_file_path, delete_origin_file), daemon=False).start()
         print(f"\n{record_name} {stop_time} 直播录制完成\n")
 
         if script_command:
@@ -1545,7 +1545,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             else:
                                                 threading.Thread(
                                                     target=converts_mp4,
-                                                    args=(save_file_path, delete_origin_file)
+                                                    args=(save_file_path, delete_origin_file),
+                                                    daemon=False
                                                 ).start()
 
                                         else:
@@ -1690,7 +1691,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                                             try:
                                                                 threading.Thread(
                                                                     target=converts_mp4,
-                                                                    args=(path, delete_origin_file)
+                                                                    args=(path, delete_origin_file),
+                                                                    daemon=False
                                                                 ).start()
                                                             except subprocess.CalledProcessError as e:
                                                                 logger.error(f"转码失败: {e} ")
@@ -1727,7 +1729,9 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             )
                                             if comment_end:
                                                 threading.Thread(
-                                                    target=converts_mp4, args=(save_file_path, delete_origin_file)
+                                                    target=converts_mp4,
+                                                    args=(save_file_path, delete_origin_file),
+                                                    daemon=False
                                                 ).start()
                                                 return
 
@@ -2354,6 +2358,9 @@ while not _shutdown_requested.is_set():
 
 # Graceful exit: workers are allowed to close their own FFmpeg backends
 # (FFmpeg receives 'q' in check_subprocess). Never force-kill them here.
+# MP4 converter threads must be non-daemon: the room-monitor threads are
+# daemon workers, so child Thread() calls otherwise inherit daemon=True
+# and this shutdown wait can miss an unfinished ffmpeg MP4 conversion.
 exit_recording = True
 emit_runtime_event(
     "runtime_stopping",
