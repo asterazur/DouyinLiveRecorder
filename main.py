@@ -1728,11 +1728,14 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                                 custom_script
                                             )
                                             if comment_end:
-                                                threading.Thread(
-                                                    target=converts_mp4,
-                                                    args=(save_file_path, delete_origin_file),
-                                                    daemon=False
-                                                ).start()
+                                                # Respect the configured TS-to-MP4 conversion choice
+                                                # also when recording stops on shutdown/disable.
+                                                if converts_to_mp4:
+                                                    threading.Thread(
+                                                        target=converts_mp4,
+                                                        args=(save_file_path, delete_origin_file),
+                                                        daemon=False
+                                                    ).start()
                                                 return
 
                                         except subprocess.CalledProcessError as e:
