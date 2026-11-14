@@ -47,6 +47,7 @@ from ffmpeg_install import (
     check_ffmpeg, ffmpeg_path
 )
 from runtime_events import emit_runtime_event
+from fast_retry import FastRetryWindow
 
 version = "v4.0.7"
 platforms = ("\n国内站点：抖音|快手|虎牙|斗鱼|YY|B站|小红书|bigo|blued|网易CC|千度热播|猫耳FM|Look|TwitCasting|百度|微博|"
@@ -429,7 +430,8 @@ def clear_record_info(record_name: str, record_url: str) -> None:
         color_obj.print_colored(f"[{record_name}]已经从录制列表中移除\n", color_obj.YELLOW)
 
 
-def direct_download_stream(source_url: str, save_path: str, record_name: str, live_url: str, platform: str) -> bool:
+def direct_download_stream(source_url: str, save_path: str, record_name: str, live_url: str, platform: str,
+                           on_natural_recording_end=None) -> bool:
     recording_started_emitted = False
     try:
         with open(save_path, 'wb') as f:
@@ -488,6 +490,8 @@ def direct_download_stream(source_url: str, save_path: str, record_name: str, li
                     format="FLV",
                     reason="completed"
                 )
+                if on_natural_recording_end is not None:
+                    on_natural_recording_end()
                 return True
     except Exception as e:
         logger.error(f"FLV下载错误: {e} 发生错误的行数: {e.__traceback__.tb_lineno}")
@@ -500,11 +504,13 @@ def direct_download_stream(source_url: str, save_path: str, record_name: str, li
                 format="FLV",
                 reason="backend_error"
             )
+            if on_natural_recording_end is not None:
+                on_natural_recording_end()
         return False
 
 
 def check_subprocess(record_name: str, record_url: str, ffmpeg_command: list, save_type: str,
-                     script_command: str | None = None) -> bool:
+                     script_command: str | None = None, on_natural_recording_end=None) -> bool:
     save_file_path = ffmpeg_command[-1]
     process = subprocess.Popen(
         ffmpeg_command, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=get_startup_info(os_type)
@@ -567,6 +573,8 @@ def check_subprocess(record_name: str, record_url: str, ffmpeg_command: list, sa
         reason="completed" if return_code == 0 else "backend_error",
         return_code=return_code
     )
+    if on_natural_recording_end is not None:
+        on_natural_recording_end()
     stop_time = time.strftime('%Y-%m-%d %H:%M:%S')
     if return_code == 0:
         if converts_to_mp4 and save_type == 'TS':
@@ -664,6 +672,16 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
     global error_count
 
     monitoring_started_emitted = False
+    fast_retry = FastRetryWindow()
+
+    def on_natural_recording_end():
+        if fast_retry.recording_ended():
+            logger.info(
+                f"Fast retry started for room {url_data[1]}; "
+                f"interval={fast_retry.interval_seconds}s, "
+                f"window={fast_retry.window_seconds}s, "
+                f"cooldown={fast_retry.cooldown_seconds}s."
+            )
 
     while not _shutdown_requested.is_set():
         try:
@@ -704,6 +722,12 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
             # print(f'\r全局代理:{global_proxy}')
             while not _shutdown_requested.is_set():
                 try:
+                    fast_retry.configure(
+                        fast_retry_enabled,
+                        fast_retry_interval_seconds,
+                        fast_retry_window_seconds,
+                        fast_retry_cooldown_seconds
+                    )
                     port_info = []
                     if record_url.find("douyin.com/") > -1:
                         platform = '抖音直播'
@@ -1430,7 +1454,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             record_url,
                                             ffmpeg_command,
                                             record_save_type,
-                                            custom_script
+                                            custom_script,
+                                            on_natural_recording_end=on_natural_recording_end
                                         )
                                         record_finished = not comment_end
                                         if comment_end:
@@ -1465,7 +1490,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             recording_time_list[record_name] = [start_record_time, record_quality_zh]
 
                                             download_success = direct_download_stream(
-                                                flv_url, save_file_path, record_name, record_url, platform
+                                                flv_url, save_file_path, record_name, record_url, platform,
+                                                on_natural_recording_end=on_natural_recording_end
                                             )
 
                                             if download_success:
@@ -1523,7 +1549,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             record_url,
                                             ffmpeg_command,
                                             record_save_type,
-                                            custom_script
+                                            custom_script,
+                                            on_natural_recording_end=on_natural_recording_end
                                         )
                                         record_finished = not comment_end
                                         if comment_end:
@@ -1599,7 +1626,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             record_url,
                                             ffmpeg_command,
                                             record_save_type,
-                                            custom_script
+                                            custom_script,
+                                            on_natural_recording_end=on_natural_recording_end
                                         )
                                         record_finished = not comment_end
                                         if comment_end:
@@ -1647,7 +1675,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             record_url,
                                             ffmpeg_command,
                                             record_save_type,
-                                            custom_script
+                                            custom_script,
+                                            on_natural_recording_end=on_natural_recording_end
                                         )
                                         record_finished = not comment_end
                                         if comment_end:
@@ -1684,7 +1713,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                                 record_url,
                                                 ffmpeg_command,
                                                 record_save_type,
-                                                custom_script
+                                                custom_script,
+                                                on_natural_recording_end=on_natural_recording_end
                                             )
                                             record_finished = not comment_end
                                             if comment_end:
@@ -1730,7 +1760,8 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                                 record_url,
                                                 ffmpeg_command,
                                                 record_save_type,
-                                                custom_script
+                                                custom_script,
+                                                on_natural_recording_end=on_natural_recording_end
                                             )
                                             record_finished = not comment_end
                                             if comment_end:
@@ -1769,7 +1800,15 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
 
                 # 这里是.如果录制结束后,循环时间会暂时变成30s后检测一遍. 这样一定程度上防止主播卡顿造成少录
                 # 当30秒过后检测一遍后. 会回归正常设置的循环秒数
-                if record_finished:
+                if fast_retry.enabled:
+                    # Bounded per-room mode replaces the legacy one-shot. During
+                    # global error overload, honour backoff rather than polling
+                    # rapidly; never restart a new window within cooldown.
+                    x = num + (60 if error_count > 20 else 0)
+                    if error_count <= 20:
+                        x = fast_retry.next_delay(x)
+                    record_finished = False
+                elif record_finished:
                     count_time_end = time.time() - count_time
                     if count_time_end < 60:
                         x = 30
@@ -2019,6 +2058,12 @@ while not _shutdown_requested.is_set():
     max_request = int(read_config_value(config, '录制设置', '同一时间访问网络的线程数', 3))
     semaphore = threading.Semaphore(max_request)
     delay_default = int(read_config_value(config, '录制设置', '循环时间(秒)', 120))
+    fast_retry_enabled = options.get(
+        read_config_value(config, '录制设置', '录制结束后快速检测(是/否)', "否"), False
+    )
+    fast_retry_interval_seconds = read_config_value(config, '录制设置', '快速检测间隔(秒)', 30)
+    fast_retry_window_seconds = read_config_value(config, '录制设置', '快速检测窗口(秒)', 300)
+    fast_retry_cooldown_seconds = read_config_value(config, '录制设置', '快速检测冷却(秒)', 900)
     local_delay_default = int(read_config_value(config, '录制设置', '排队读取网址时间(秒)', 0))
     loop_time = options.get(read_config_value(config, '录制设置', '是否显示循环秒数', "否"), False)
     show_url = options.get(read_config_value(config, '录制设置', '是否显示直播源地址', "否"), False)
