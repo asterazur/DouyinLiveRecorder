@@ -1432,6 +1432,7 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             record_save_type,
                                             custom_script
                                         )
+                                        record_finished = not comment_end
                                         if comment_end:
                                             return
 
@@ -1524,6 +1525,7 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             record_save_type,
                                             custom_script
                                         )
+                                        record_finished = not comment_end
                                         if comment_end:
                                             return
 
@@ -1599,6 +1601,7 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             record_save_type,
                                             custom_script
                                         )
+                                        record_finished = not comment_end
                                         if comment_end:
                                             return
 
@@ -1646,6 +1649,7 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                             record_save_type,
                                             custom_script
                                         )
+                                        record_finished = not comment_end
                                         if comment_end:
                                             return
 
@@ -1682,6 +1686,7 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                                 record_save_type,
                                                 custom_script
                                             )
+                                            record_finished = not comment_end
                                             if comment_end:
                                                 if converts_to_mp4:
                                                     file_paths = utils.get_file_paths(os.path.dirname(save_file_path))
@@ -1727,6 +1732,7 @@ def start_record(url_data: tuple, count_variable: int = -1) -> None:
                                                 record_save_type,
                                                 custom_script
                                             )
+                                            record_finished = not comment_end
                                             if comment_end:
                                                 # Respect the configured TS-to-MP4 conversion choice
                                                 # also when recording stops on shutdown/disable.
