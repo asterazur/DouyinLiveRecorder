@@ -1,4 +1,4 @@
-# Graceful recorder shutdown (experimental: e002)
+# Graceful DouyinLiveRecorder (DLR) shutdown (experimental: e002)
 
 This documents the prototype for a public, installation-scoped shutdown API.
 It does not require DLR_UI. All mechanisms request orderly shutdown; none
@@ -9,7 +9,7 @@ performs process termination.
 For a recorder running in an interactive terminal, press `Ctrl+C`.
 `SIGINT` (from Ctrl+C) and `SIGTERM` request the same orderly shutdown
 (where supported by the OS). No other keyboard reader is installed: ordinary
-terminal input remains available for DLR's initial room-URL prompt.
+terminal input remains available for the initial room-URL prompt in DouyinLiveRecorder (DLR).
 
 ## Other applications and scripts
 
@@ -38,7 +38,7 @@ rather than killing anything.
 
 ## Local integration protocol (version 1)
 
-While running, DLR creates
+While running, DouyinLiveRecorder (DLR) creates
 `logs/runtime_control.<pid>.json` in its own installation. The descriptor
 contains `protocol_version`, `pid`, `instance_id`, a random `token`,
 and a local TCP `port`.
@@ -64,7 +64,7 @@ its matching descriptor after an orderly exit.
 The shutdown request sets a shared stop event and prevents new room worker
 launches. Active worker threads are allowed to stop their own FFmpeg
 processes via the existing `q`-to-stdin path, wait for them and finish
-processing. DLR writes `runtime_stopping` and later `runtime_stopped`
+processing. DouyinLiveRecorder (DLR) writes `runtime_stopping` and later `runtime_stopped`
 to `logs/runtime_events.jsonl` using runtime events schema version 2.1.
 The final event includes `runtime_pid`, `reason` and `status`.
 
